@@ -1,35 +1,52 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useCallback, useState } from "react";
 
-function App() {
-  const [count, setCount] = useState(0)
+import { Layout } from "antd";
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+import Nav from './components/Nav';
+import Basics from "./pages/Basics";
+import Home from "./pages/Home";
+import Ideas from "./pages/Ideas";
+import Partition from "./pages/Partition";
+import Footer from "./components/Footer";
+
+import { getFromLocalStorage, saveToLocalStorage } from "./services/localStorage";
+
+import "./App.css";
+
+interface MenuInfo {
+  key: string;
+  keyPath: string[];
+  /** @deprecated This will not support in future. You should avoid to use this */
+  item: React.ReactInstance;
+  domEvent: React.MouseEvent<HTMLElement> | React.KeyboardEvent<HTMLElement>;
 }
 
-export default App
+type MenuClickEventHandler = (info: MenuInfo) => void;
+
+const STORAGE_KEY = "menuSelection";
+
+function App() {
+  const [menuSelection, setMenuSelection] = useState(getFromLocalStorage(STORAGE_KEY) ?? "0");
+
+  const handleMenuSelection: MenuClickEventHandler = useCallback(({ key }) => {
+    setMenuSelection(key);
+    saveToLocalStorage(STORAGE_KEY, key);
+  }, []);
+
+  return (
+    <Layout>
+      <Layout.Header>
+        <Nav menuSelection={menuSelection} handleMenuSelection={handleMenuSelection} />
+      </Layout.Header>
+      <Layout.Content className="main-content">
+        {menuSelection === "0" && <Home />}
+        {menuSelection === "1" && <Basics />}
+        {menuSelection === "2" && <Partition />}
+        {menuSelection === "3" && <Ideas />}
+      </Layout.Content>
+      <Footer />
+    </Layout>
+  );
+}
+
+export default App;
