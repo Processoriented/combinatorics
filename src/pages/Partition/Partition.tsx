@@ -2,25 +2,19 @@ import React, { useCallback, useState } from "react";
 
 import { Form, InputNumber, Button } from "antd";
 
-type Partition = Record<string, number>;
+import Result from "./Result";
+import { partitionDef, resultObj } from './types';
 
-type resultObj = {
-  partitions: Partition[];
-  params: {
-    n: number;
-    minSize: number;
-    minPartitions: number;
-  };
-};
+import "./Partition.css";
+
+const defaultParams = { n: 60, minSize: 2, minPartitions: 2 };
+const defaultResult: resultObj = { partitions: [], params: defaultParams };
 
 export default function Partition() {
-  const [n, setN] = useState(60);
-  const [minSize, setMinSize] = useState(2);
-  const [minPartitions, setMinPartitions] = useState(2);
-  const [result, setResult] = useState<resultObj>({
-    partitions: [],
-    params: { n, minSize, minPartitions },
-  });
+  const [n, setN] = useState(defaultParams.n);
+  const [minSize, setMinSize] = useState(defaultParams.minSize);
+  const [minPartitions, setMinPartitions] = useState(defaultParams.minPartitions);
+  const [result, setResult] = useState<resultObj>(defaultResult);
 
   const handleClick: React.MouseEventHandler = useCallback(
     (evt) => {
@@ -29,7 +23,10 @@ export default function Partition() {
         partitions: partition(n, minSize, minPartitions),
         params: { n, minSize, minPartitions },
       };
-      setResult(nextResult);
+      setResult(defaultResult);
+      setTimeout(() => {
+        setResult(nextResult);
+      }, 100);
     },
     [minPartitions, minSize, n]
   );
@@ -37,7 +34,7 @@ export default function Partition() {
   return (
     <div>
       <h1>Partition</h1>
-      <Form name="partition" initialValues={{ n, minSize, minPartitions }}>
+      <Form name="partition" initialValues={{ n, minSize, minPartitions }} layout="inline">
         <Form.Item label="n" name="n" rules={[{ required: true, message: "Please input n!" }]}>
           <InputNumber onChange={(value) => setN((prev) => (value as number) ?? prev)} />
         </Form.Item>
@@ -64,25 +61,23 @@ export default function Partition() {
           </Button>
         </Form.Item>
       </Form>
-      {Array.isArray(result.partitions) && result.partitions.length > 0 && (
-        <p>{`Found ${result.partitions.length} different ways to partition ${result.params.n} items where each subset has at least ${result.params.minSize} items and there are at least ${result.params.minPartitions} subsets.`}</p>
-      )}
+      <Result result={result} />
     </div>
   );
 }
 
-function partition(n: number, minSize: number, minPartitions: number): Partition[] {
-  const result: Partition[] = [];
+function partition(n: number, minSize: number, minPartitions: number): partitionDef[] {
+  const result: partitionDef[] = [];
 
   function helper(
     n: number,
     minSize: number,
     minPartitions: number,
-    currentPartition: Array<Partition | number>,
+    currentPartition: Array<partitionDef | number>,
     start: number
   ) {
     if (n === 0 && currentPartition.length >= minPartitions) {
-      const partitionObj: Partition = {};
+      const partitionObj: partitionDef = {};
       currentPartition.forEach((size) => {
         partitionObj[`${size}`] = (partitionObj[`${size}`] || 0) + 1;
       });
@@ -98,5 +93,14 @@ function partition(n: number, minSize: number, minPartitions: number): Partition
   }
 
   helper(n, minSize, minPartitions, [], minSize);
-  return result; // .filter((grouping) => Object.keys(grouping).length > 1);
+  const getMaxSize = (partition: partitionDef) => Math.max(...Object.keys(partition).map(Number));
+  // const getVariety = (partition: partitionDef) => {
+  //   const sizes = new Set([...(Object.keys(partition).map(Number))]);
+  //   if (sizes.size <= 1) return 0;
+  //   const asArray = Array.from(sizes);
+  //   const max = Math.max(...asArray);
+  //   const min = Math.min(...asArray);
+  //   return sizes.size + ((max - min) / n);
+  // };
+  return result.sort((a, b) => getMaxSize(b) - getMaxSize(a));
 }
