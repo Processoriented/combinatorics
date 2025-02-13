@@ -1,13 +1,42 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { Pagination } from 'antd';
+import { Pagination, Popover, Switch } from "antd";
 
 import { resultObj } from "./types";
 import Coin from "../../assets/coin.svg";
 
+const AUTO_PAGINATE_TIMEOUT = 500;
+
 export default function Result({ result }: { result: resultObj }) {
+  const [autoPaginate, setAutoPaginate] = useState(false);
   const [variant, setVariant] = useState(0);
+  const timeoutRef = useRef<number | null>(null);
+
   const partitions = useMemo(() => result?.partitions ?? [], [result]);
+
+  const nextVariant = useCallback(() => {
+    setVariant((v) => (v + 1) % partitions.length);
+  }, [partitions.length]);
+  
+  const makeTimeoutFn = useCallback(() => {
+    return () => {
+      nextVariant();
+      timeoutRef.current = setTimeout(makeTimeoutFn(), AUTO_PAGINATE_TIMEOUT);
+    };
+  }, [nextVariant]);
+
+  useEffect(() => {
+    const cleanup = () => {
+      const timeoutId = timeoutRef.current;
+      if (typeof timeoutId === "number") clearTimeout(timeoutId);
+    };
+    if (autoPaginate) {
+      timeoutRef.current = setTimeout(makeTimeoutFn(), AUTO_PAGINATE_TIMEOUT);
+    } else {
+      cleanup();
+    }
+    return cleanup;
+  }, [autoPaginate, makeTimeoutFn]);
 
   const { n, minSize, minPartitions } = useMemo(
     () => result?.params ?? { n: 0, minSize: 0, minPartitions: 0 },
@@ -33,17 +62,21 @@ export default function Result({ result }: { result: resultObj }) {
     <>
       <p>{message}</p>
       <div key={variant} className="partition-grouping">
-        <Pagination
-          className="result-pagination"
-          total={partitions.length}
-          showSizeChanger={false}
-          showQuickJumper
-          showTotal={(total) => `Total ${total} variants`}
-          pageSize={1}
-          current={variant + 1}
-          onChange={(page) => setVariant(page - 1)}
-          responsive
-        />
+        <div className="result-pagination">
+          <Pagination
+            total={partitions.length}
+            showSizeChanger={false}
+            showQuickJumper
+            showTotal={(total) => `Total ${total} variants`}
+            pageSize={1}
+            current={variant + 1}
+            onChange={(page) => setVariant(page - 1)}
+            responsive
+          />
+          <Popover title="Auto paginate">
+            <Switch id="auto-paginate" onChange={setAutoPaginate} checked={autoPaginate} />
+          </Popover>
+        </div>
         <div className="stack-wrapper">
           {Object.entries(partition)
             .sort(([a], [b]) => parseInt(b) - parseInt(a))
